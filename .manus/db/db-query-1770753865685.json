@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, invoiceNumber, clientName, createdAt FROM invoices ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HaBjKzTqBjrWRC.root --database Fdcrw5hHJYD4bjJNDKYhop --execute SELECT id, invoiceNumber, clientName, createdAt FROM invoices ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "60004",
+      "invoiceNumber": "CPE-INV-87734",
+      "clientName": "SONIA RAI",
+      "createdAt": "2026-02-10 19:56:27"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tinvoiceNumber\tclientName\tcreatedAt\n60004\tCPE-INV-87734\tSONIA RAI\t2026-02-10 19:56:27\n",
+  "stderr": "",
+  "execution_time_ms": 347
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `invoiceQrCodes` MODIFY COLUMN `qrCodeUrl` text;
