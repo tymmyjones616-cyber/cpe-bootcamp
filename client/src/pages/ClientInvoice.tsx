@@ -55,16 +55,19 @@ export default function ClientInvoice() {
   const primaryQrCode = qrCodes.length > 0 ? qrCodes[0] : null;
 
   const cryptoAmount = useMemo(() => {
-    if (!invoice || !rates || !primaryQrCode) return null;
-    const network = primaryQrCode.network.toLowerCase();
-    let rate = 1;
+    if (!invoice || !primaryQrCode) return "0.00";
+    const coin = primaryQrCode.coin.toLowerCase();
+    let rate = rates ? (rates[coin] || 1) : 1;
     
-    if (network.includes("btc")) rate = rates.btc;
-    else if (network.includes("eth")) rate = rates.eth;
-    else if (network.includes("bnb")) rate = rates.bnb;
-    else if (network.includes("usdt") || network.includes("usdc")) rate = rates.usdt;
+    // Explicitly handle USDT/USDC as 1:1 if rate is missing or likely 1.0
+    if ((coin.includes("usdt") || coin.includes("usdc")) && (!rate || rate === 0)) {
+      rate = 1;
+    }
     
-    return (Number(invoice.amountUsd) / rate).toFixed(network.includes("usdt") ? 2 : 6);
+    const amount = Number(invoice.amountUsd) / rate;
+    const decimals = (coin.includes("usdt") || coin.includes("usdc")) ? 2 : 6;
+    
+    return isNaN(amount) ? "0.00" : amount.toFixed(decimals);
   }, [invoice, rates, primaryQrCode]);
 
   if (invoiceQuery.isLoading || settingsQuery.isLoading) {
@@ -102,8 +105,13 @@ export default function ClientInvoice() {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
-    html2pdf().from(element).set(opt).save();
-    toast.success("Downloading PDF invoice...");
+    try {
+      html2pdf().set(opt).from(element).save();
+      toast.success("Preparing PDF invoice...");
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      toast.error("Failed to generate PDF. Please try again.");
+    }
   };
 
   const seoSchema = {
@@ -247,6 +255,8 @@ export default function ClientInvoice() {
                    src="/assets/videos/CPE.mp4" 
                    className="absolute inset-0 w-full h-full object-cover opacity-80"
                    controls
+                   controlsList="nodownload"
+                   onContextMenu={(e) => e.preventDefault()}
                    poster="/assets/images/video-poster.jpg"
                  >
                    Your browser does not support the video tag.

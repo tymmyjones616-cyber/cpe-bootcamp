@@ -88,7 +88,8 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const invoiceNumber = `CPE-INV-${String(Date.now()).slice(-5)}`;
-        const uniqueSlug = nanoid(12);
+        const slugBase = input.clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const uniqueSlug = `${slugBase || 'invoice'}-${nanoid(6)}`;
         
         const invoiceResult = await createInvoice({
           invoiceNumber,

@@ -124,8 +124,8 @@ export default function InvoiceDetails() {
                   </div>
                   <div className="space-y-2">
                     <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Status</div>
-                    <Badge className={`px-4 py-1 text-sm font-bold border ${getStatusColor(invoice.status)}`} variant="outline">
-                      {invoice.status.replace("_", " ").toUpperCase()}
+                    <Badge className={`px-4 py-1 text-sm font-bold border ${getStatusColor(invoice.status || 'pending')}`} variant="outline">
+                      {(invoice.status || 'PENDING').replace("_", " ").toUpperCase()}
                     </Badge>
                   </div>
                 </div>
@@ -160,8 +160,8 @@ export default function InvoiceDetails() {
                           <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Submission #{idx + 1}</div>
                           <div className="text-sm font-medium">{new Date(proof.createdAt).toLocaleString()}</div>
                         </div>
-                        <Badge className={`font-bold border ${getStatusColor(proof.status)}`} variant="outline">
-                          {proof.status.toUpperCase()}
+                        <Badge className={`font-bold border ${getStatusColor(proof.status || 'under_review')}`} variant="outline">
+                          {(proof.status || 'UNDER REVIEW').replace("_", " ").toUpperCase()}
                         </Badge>
                       </div>
 
@@ -226,13 +226,13 @@ export default function InvoiceDetails() {
                     <div>
                       <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Network Payload</div>
                       <Badge variant="secondary" className="font-mono text-[10px] w-full justify-center py-1">
-                        {primaryQrCode.network.toUpperCase()}
+                        {(primaryQrCode.network || 'UNKNOWN').toUpperCase()}
                       </Badge>
                     </div>
                     {invoice.exchange && (
                       <div>
                         <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Custodian / Exchange</div>
-                        <div className="text-sm font-bold text-zinc-300">{invoice.exchange.toUpperCase()}</div>
+                        <div className="text-sm font-bold text-zinc-300">{(invoice.exchange || '').toUpperCase()}</div>
                       </div>
                     )}
                     <div>
@@ -256,7 +256,7 @@ export default function InvoiceDetails() {
               <img src={selectedProof?.imageUrl} alt="Verification" className="max-w-full max-h-[70vh] rounded-lg shadow-2xl shadow-blue-500/10" />
             </div>
             <div className="p-4 border-t border-zinc-800 bg-zinc-900/50 text-center">
-              <p className="text-xs text-zinc-500 font-mono">ENCRYPTED IMAGE PAYLOAD FROM {new Date(selectedProof?.createdAt).toLocaleUpperCase()}</p>
+              <p className="text-xs text-zinc-500 font-mono">ENCRYPTED IMAGE PAYLOAD FROM {new Date(selectedProof?.createdAt || Date.now()).toLocaleDateString().toUpperCase()}</p>
             </div>
           </DialogContent>
         </Dialog>
