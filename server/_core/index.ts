@@ -8,6 +8,10 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { seedAdmin } from "../db";
+import dns from "dns";
+
+// Force Node.js to honor IPv6 records (required for Supabase direct connections)
+dns.setDefaultResultOrder("verbatim");
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {

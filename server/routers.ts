@@ -15,9 +15,47 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    login: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const { getUserByOpenId } = await import("./db.js");
+        const { sdk } = await import("./_core/sdk.js");
+        const { getSessionCookieOptions } = await import("./_core/cookies.js");
+        const { COOKIE_NAME, ONE_YEAR_MS } = await import("@shared/const.js");
+        const bcrypt = await import("bcryptjs");
+
+        const user = await getUserByOpenId(input.email);
+        
+        if (!user || user.role !== "admin") {
+          throw new Error("Invalid credentials or unauthorized");
+        }
+        
+        if (!user.password) {
+          throw new Error("Account not configured for password login");
+        }
+        
+        const isValid = await bcrypt.compare(input.password, user.password);
+        if (!isValid) {
+          throw new Error("Invalid credentials");
+        }
+
+        const token = await sdk.createSessionToken(user.openId, {
+          name: user.name || user.email || ""
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req as any);
+        ctx.res.cookie(COOKIE_NAME, token, { 
+          ...cookieOptions,
+          maxAge: ONE_YEAR_MS 
+        });
+
+        return { success: true };
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      const { getSessionCookieOptions } = require("./_core/cookies.js");
+      const { COOKIE_NAME } = require("@shared/const.js");
+      const cookieOptions = getSessionCookieOptions(ctx.req as any);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions });
       return {
         success: true,
       } as const;
@@ -36,6 +74,7 @@ export const appRouter = router({
         walletAddresses: z.record(z.string(), z.string()),
         exchange: z.string().optional(),
         qrCodes: z.array(z.object({
+          coin: z.string(),
           network: z.string(),
           walletAddress: z.string(),
           qrCodeUrl: z.string().optional(),
@@ -96,6 +135,7 @@ export const appRouter = router({
             
             await createInvoiceQrCode({
               invoiceId: invoice.id,
+              coin: qr.coin,
               network: qr.network,
               walletAddress: qr.walletAddress,
               qrCodeUrl: finalQrCodeUrl,
@@ -115,18 +155,27 @@ export const appRouter = router({
           }
         }
 
-        await sendInvoiceEmail(
-          input.clientEmail,
-          input.clientName,
-          invoiceNumber,
-          input.amountUsd,
-          `${process.env.APP_URL || ''}/invoice/${uniqueSlug}`
-        );
+        // These are important but should not block invoice creation success if unconfigured
+        try {
+          await sendInvoiceEmail(
+            input.clientEmail,
+            input.clientName,
+            invoiceNumber,
+            input.amountUsd,
+            `${process.env.APP_URL || ''}/invoice/${uniqueSlug}`
+          );
+        } catch (error) {
+          console.warn("Failed to send invoice email:", error);
+        }
 
-        await notifyOwner({
-          title: "New Invoice Created",
-          content: `Invoice ${invoiceNumber} created for ${input.clientName} - $${input.amountUsd}`,
-        });
+        try {
+          await notifyOwner({
+            title: "New Invoice Created",
+            content: `Invoice ${invoiceNumber} created for ${input.clientName} - $${input.amountUsd}`,
+          });
+        } catch (error) {
+          console.warn("Failed to notify owner:", error);
+        }
 
         return { invoiceNumber, uniqueSlug };
       }),
@@ -171,6 +220,7 @@ export const appRouter = router({
         exchange: z.string().optional(),
         walletAddresses: z.record(z.string(), z.string()).optional(),
         qrCodes: z.array(z.object({
+          coin: z.string(),
           network: z.string(),
           walletAddress: z.string(),
           qrCodeUrl: z.string().optional(),
@@ -206,6 +256,7 @@ export const appRouter = router({
           for (const qr of input.qrCodes) {
             await createInvoiceQrCode({
               invoiceId: input.id,
+              coin: qr.coin,
               network: qr.network,
               walletAddress: qr.walletAddress,
               qrCodeUrl: qr.qrCodeUrl,
@@ -304,17 +355,25 @@ export const appRouter = router({
         });
 
         const appUrl = process.env.APP_URL || '';
-        await sendPaymentStatusUpdate(
-          invoice.clientEmail,
-          invoice.clientName,
-          invoice.invoiceNumber,
-          'approved'
-        );
+        try {
+          await sendPaymentStatusUpdate(
+            invoice.clientEmail,
+            invoice.clientName,
+            invoice.invoiceNumber,
+            'approved'
+          );
+        } catch (error) {
+          console.warn("Failed to send payment status update email:", error);
+        }
 
-        await notifyOwner({
-          title: "Payment Approved",
-          content: `Invoice ${invoice.invoiceNumber} payment has been approved. Client: ${invoice.clientName}`,
-        });
+        try {
+          await notifyOwner({
+            title: "Payment Approved",
+            content: `Invoice ${invoice.invoiceNumber} payment has been approved. Client: ${invoice.clientName}`,
+          });
+        } catch (error) {
+          console.warn("Failed to notify owner:", error);
+        }
 
         return { success: true };
       }),
@@ -340,18 +399,26 @@ export const appRouter = router({
           details: `Payment proof rejected. Reason: ${input.reason}. ${input.adminNotes || ""}`,
         });
 
-        await sendPaymentStatusUpdate(
-          invoice.clientEmail,
-          invoice.clientName,
-          invoice.invoiceNumber,
-          'rejected',
-          input.reason
-        );
+        try {
+          await sendPaymentStatusUpdate(
+            invoice.clientEmail,
+            invoice.clientName,
+            invoice.invoiceNumber,
+            'rejected',
+            input.reason
+          );
+        } catch (error) {
+          console.warn("Failed to send payment status update email (rejected):", error);
+        }
 
-        await notifyOwner({
-          title: "Payment Rejected",
-          content: `Invoice ${invoice.invoiceNumber} payment has been rejected. Reason: ${input.reason}`,
-        });
+        try {
+          await notifyOwner({
+            title: "Payment Rejected",
+            content: `Invoice ${invoice.invoiceNumber} payment has been rejected. Reason: ${input.reason}`,
+          });
+        } catch (error) {
+          console.warn("Failed to notify owner:", error);
+        }
 
         return { success: true };
       }),
@@ -391,16 +458,24 @@ export const appRouter = router({
           details: `Payment proof submitted via ${input.exchangeUsed}`,
         });
 
-        await sendPaymentProofNotification(
-          process.env.ADMIN_EMAIL || 'admin@cpe-bootcamp.online',
-          invoice.clientName,
-          invoice.invoiceNumber
-        );
+        try {
+          await sendPaymentProofNotification(
+            process.env.ADMIN_EMAIL || 'admin@cpe-bootcamp.online',
+            invoice.clientName,
+            invoice.invoiceNumber
+          );
+        } catch (error) {
+          console.warn("Failed to send payment proof notification email:", error);
+        }
 
-        await notifyOwner({
-          title: "Payment Proof Received",
-          content: `Payment proof received for invoice ${invoice.invoiceNumber}. Awaiting verification.`,
-        });
+        try {
+          await notifyOwner({
+            title: "Payment Proof Received",
+            content: `Payment proof received for invoice ${invoice.invoiceNumber}. Awaiting verification.`,
+          });
+        } catch (error) {
+          console.warn("Failed to notify owner:", error);
+        }
 
         return { success: true };
       }),
@@ -501,6 +576,7 @@ export const appRouter = router({
         termsText: z.string().optional(),
         privacyText: z.string().optional(),
         globalTutorialUrl: z.string().optional(),
+        themeConfig: z.record(z.string(), z.string()).optional(),
       }))
       .mutation(async ({ input }) => {
         await updateSiteSettings(input);

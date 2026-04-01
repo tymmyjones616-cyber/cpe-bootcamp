@@ -15,6 +15,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/admin"} component={AdminDashboard} />
+      <Route path={"/admin/login"} component={AdminLogin} />
       <Route path={"/admin/analytics"} component={AdminAnalytics} />
       <Route path={"/admin/settings"} component={AdminSettings} />
       <Route path={"/admin/invoice/:id"} component={InvoiceDetails} />

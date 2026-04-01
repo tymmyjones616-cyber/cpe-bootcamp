@@ -1,25 +1,27 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, json } from "drizzle-orm/mysql-core";
+import { pgTable, serial, text, timestamp, varchar, decimal, boolean, jsonb, pgEnum, integer } from "drizzle-orm/pg-core";
+
+/**
+ * Enums
+ */
+export const roleEnum = pgEnum("role", ["user", "admin"]);
+export const serviceTypeEnum = pgEnum("serviceType", ["virtual", "onsite", "custom"]);
+export const invoiceStatusEnum = pgEnum("status", ["pending", "under_review", "paid", "expired", "rejected"]);
+export const proofStatusEnum = pgEnum("proof_status", ["pending", "approved", "rejected", "more_info_requested"]);
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
  */
-export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
-  id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  /** OAuth identifier (e.g. from GitHub or custom) */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: roleEnum("role").default("user").notNull(),
   password: varchar("password", { length: 255 }), // Hashed password for credentials-based login
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
@@ -27,40 +29,41 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 // Invoice table for storing invoice records
-export const invoices = mysqlTable("invoices", {
-  id: int("id").autoincrement().primaryKey(),
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
   invoiceNumber: varchar("invoiceNumber", { length: 32 }).notNull().unique(),
   clientName: varchar("clientName", { length: 255 }).notNull(),
   clientEmail: varchar("clientEmail", { length: 320 }).notNull(),
-  serviceType: mysqlEnum("serviceType", ["virtual", "onsite", "custom"]).notNull(),
+  serviceType: serviceTypeEnum("serviceType").notNull(),
   description: text("description"),
   amountUsd: decimal("amountUsd", { precision: 10, scale: 2 }).notNull(),
   dueDate: timestamp("dueDate").notNull(),
-  status: mysqlEnum("status", ["pending", "under_review", "paid", "expired", "rejected"]).default("pending").notNull(),
-  walletAddresses: json("walletAddresses").notNull(), // { btc: "", usdt_trc20: "", etc }
-  exchange: varchar("exchange", { length: 64 }), // binance, coinbase, bybit, ndax, bitget, or custom
-  selectedNetwork: varchar("selectedNetwork", { length: 64 }), // btc, usdt_trc20, usdt_erc20, eth, usdc, etc
-  selectedWalletAddress: varchar("selectedWalletAddress", { length: 255 }), // Specific address for the invoice
-  selectedExchange: varchar("selectedExchange", { length: 64 }), // Specific exchange for the invoice
-  selectedVideoUrl: text("selectedVideoUrl"), // Specific video tutorial link
-  qrCodeUrl: text("qrCodeUrl"), // S3 URL to QR code image
-  videoTutorialUrl: text("videoTutorialUrl"), // Legacy link to tutorial video
-  paymentInstructions: text("paymentInstructions"), // Custom payment instructions
+  status: invoiceStatusEnum("status").default("pending").notNull(),
+  walletAddresses: jsonb("walletAddresses").notNull(), // { btc: "", usdt_trc20: "", etc }
+  exchange: varchar("exchange", { length: 64 }), 
+  selectedNetwork: varchar("selectedNetwork", { length: 64 }), 
+  selectedWalletAddress: varchar("selectedWalletAddress", { length: 255 }), 
+  selectedExchange: varchar("selectedExchange", { length: 64 }), 
+  selectedVideoUrl: text("selectedVideoUrl"), 
+  qrCodeUrl: text("qrCodeUrl"), 
+  videoTutorialUrl: text("videoTutorialUrl"), 
+  paymentInstructions: text("paymentInstructions"), 
   uniqueSlug: varchar("uniqueSlug", { length: 64 }).notNull().unique(),
   isDeleted: boolean("isDeleted").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = typeof invoices.$inferInsert;
 
-// Invoice QR codes table - store multiple QR codes per invoice for different networks
-export const invoiceQrCodes = mysqlTable("invoiceQrCodes", {
-  id: int("id").autoincrement().primaryKey(),
-  invoiceId: int("invoiceId").notNull(),
-  network: varchar("network", { length: 64 }).notNull(), // btc, usdt_trc20, usdt_erc20, eth, usdc, etc
-  qrCodeUrl: text("qrCodeUrl"), // S3 URL to QR code image (nullable if no image uploaded)
+// Invoice QR codes table
+export const invoiceQrCodes = pgTable("invoiceQrCodes", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull(),
+  coin: varchar("coin", { length: 64 }), 
+  network: varchar("network", { length: 64 }).notNull(), 
+  qrCodeUrl: text("qrCodeUrl"), 
   walletAddress: text("walletAddress").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -68,11 +71,11 @@ export const invoiceQrCodes = mysqlTable("invoiceQrCodes", {
 export type InvoiceQrCode = typeof invoiceQrCodes.$inferSelect;
 export type InsertInvoiceQrCode = typeof invoiceQrCodes.$inferInsert;
 
-// Invoice video tutorials table - store video links per invoice
-export const invoiceVideoTutorials = mysqlTable("invoiceVideoTutorials", {
-  id: int("id").autoincrement().primaryKey(),
-  invoiceId: int("invoiceId").notNull(),
-  exchange: varchar("exchange", { length: 64 }).notNull(), // binance, coinbase, bybit, ndax, bitget
+// Invoice video tutorials table
+export const invoiceVideoTutorials = pgTable("invoiceVideoTutorials", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull(),
+  exchange: varchar("exchange", { length: 64 }).notNull(), 
   videoUrl: text("videoUrl").notNull(),
   title: varchar("title", { length: 255 }),
   description: text("description"),
@@ -82,83 +85,83 @@ export const invoiceVideoTutorials = mysqlTable("invoiceVideoTutorials", {
 export type InvoiceVideoTutorial = typeof invoiceVideoTutorials.$inferSelect;
 export type InsertInvoiceVideoTutorial = typeof invoiceVideoTutorials.$inferInsert;
 
-// Payment proof table for storing uploaded payment evidence
-export const paymentProofs = mysqlTable("paymentProofs", {
-  id: int("id").autoincrement().primaryKey(),
-  invoiceId: int("invoiceId").notNull(),
-  imageUrl: text("imageUrl").notNull(), // S3 URL
-  imageKey: varchar("imageKey", { length: 255 }).notNull(), // S3 key for reference
+// Payment proof table
+export const paymentProofs = pgTable("paymentProofs", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull(),
+  imageUrl: text("imageUrl").notNull(), 
+  imageKey: varchar("imageKey", { length: 255 }).notNull(), 
   transactionId: varchar("transactionId", { length: 255 }).notNull(),
-  exchangeUsed: varchar("exchangeUsed", { length: 64 }).notNull(), // Binance, Coinbase, etc
-  cryptoNetwork: varchar("cryptoNetwork", { length: 64 }).notNull(), // BTC, USDT-TRC20, etc
+  exchangeUsed: varchar("exchangeUsed", { length: 64 }).notNull(), 
+  cryptoNetwork: varchar("cryptoNetwork", { length: 64 }).notNull(), 
   clientNotes: text("clientNotes"),
   submittedAt: timestamp("submittedAt").defaultNow().notNull(),
   verifiedAt: timestamp("verifiedAt"),
-  verifiedBy: int("verifiedBy"), // User ID of admin who verified
-  status: mysqlEnum("status", ["pending", "approved", "rejected", "more_info_requested"]).default("pending").notNull(),
+  verifiedBy: integer("verifiedBy"), 
+  status: proofStatusEnum("status").default("pending").notNull(),
   rejectionReason: text("rejectionReason"),
   adminNotes: text("adminNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type PaymentProof = typeof paymentProofs.$inferSelect;
 export type InsertPaymentProof = typeof paymentProofs.$inferInsert;
 
 // Wallet configuration table
-export const walletConfigs = mysqlTable("walletConfigs", {
-  id: int("id").autoincrement().primaryKey(),
-  network: varchar("network", { length: 64 }).notNull().unique(), // btc, usdt_trc20, usdt_erc20, eth_erc20, eth_base, eth_arbitrum, usdc_trc20, usdc_erc20
+export const walletConfigs = pgTable("walletConfigs", {
+  id: serial("id").primaryKey(),
+  network: varchar("network", { length: 64 }).notNull().unique(), 
   address: varchar("address", { length: 255 }).notNull(),
-  networkLabel: varchar("networkLabel", { length: 128 }).notNull(), // Display name
+  networkLabel: varchar("networkLabel", { length: 128 }).notNull(), 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type WalletConfig = typeof walletConfigs.$inferSelect;
 export type InsertWalletConfig = typeof walletConfigs.$inferInsert;
 
 // Exchange tutorials table
-export const exchangeTutorials = mysqlTable("exchangeTutorials", {
-  id: int("id").autoincrement().primaryKey(),
-  exchangeName: varchar("exchangeName", { length: 64 }).notNull(), // Binance, Coinbase, Bybit, NDAX, Bitget
+export const exchangeTutorials = pgTable("exchangeTutorials", {
+  id: serial("id").primaryKey(),
+  exchangeName: varchar("exchangeName", { length: 64 }).notNull(), 
   videoUrl: text("videoUrl"),
   textGuide: text("textGuide"),
-  stepByStepInstructions: json("stepByStepInstructions"), // Array of steps
+  stepByStepInstructions: jsonb("stepByStepInstructions"), 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type ExchangeTutorial = typeof exchangeTutorials.$inferSelect;
 export type InsertExchangeTutorial = typeof exchangeTutorials.$inferInsert;
 
 // FAQ items table
-export const faqItems = mysqlTable("faqItems", {
-  id: int("id").autoincrement().primaryKey(),
+export const faqItems = pgTable("faqItems", {
+  id: serial("id").primaryKey(),
   question: varchar("question", { length: 512 }).notNull(),
   answer: text("answer").notNull(),
-  category: varchar("category", { length: 64 }), // payment, verification, network, etc
-  displayOrder: int("displayOrder").default(0),
+  category: varchar("category", { length: 64 }), 
+  displayOrder: integer("displayOrder").default(0),
   active: boolean("active").default(true),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type FaqItem = typeof faqItems.$inferSelect;
 export type InsertFaqItem = typeof faqItems.$inferInsert;
 
-// Audit logs table for tracking payment verification actions
-export const auditLogs = mysqlTable("auditLogs", {
-  id: int("id").autoincrement().primaryKey(),
-  invoiceId: int("invoiceId").notNull(),
-  action: varchar("action", { length: 64 }).notNull(), // created, payment_submitted, approved, rejected, more_info_requested
-  performedBy: int("performedBy"), // User ID, null for system actions
+// Audit logs table
+export const auditLogs = pgTable("auditLogs", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull(),
+  action: varchar("action", { length: 64 }).notNull(), 
+  performedBy: integer("performedBy"), 
   details: text("details"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const siteSettings = mysqlTable("siteSettings", {
-  id: int("id").autoincrement().primaryKey(),
+export const siteSettings = pgTable("siteSettings", {
+  id: serial("id").primaryKey(),
   logoUrl: text("logoUrl"),
   siteName: varchar("siteName", { length: 255 }).default("CPE Bootcamp"),
   supportEmail: varchar("supportEmail", { length: 255 }),
@@ -169,8 +172,9 @@ export const siteSettings = mysqlTable("siteSettings", {
   termsText: text("termsText"),
   privacyText: text("privacyText"),
   globalTutorialUrl: text("globalTutorialUrl"),
-  trustBadgesJson: json("trustBadgesJson"), // Array of { icon: string, label: string }
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  trustBadgesJson: jsonb("trustBadgesJson"), 
+  themeConfig: jsonb("themeConfig"), 
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type SiteSettings = typeof siteSettings.$inferSelect;

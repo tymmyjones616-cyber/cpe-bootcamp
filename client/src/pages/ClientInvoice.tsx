@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useMemo } from "react";
-import { Copy, Download, AlertCircle, Play, ExternalLink, ShieldCheck, Lock, Clock, Send, ChevronRight, MapPin, Facebook, FileText } from "lucide-react";
+import { Copy, Download, AlertCircle, Play, ExternalLink, ShieldCheck, Lock, Clock, Send, ChevronRight, MapPin, Facebook, FileText, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PaymentProofModal } from "./PaymentProofModal";
@@ -70,8 +70,14 @@ export default function ClientInvoice() {
   if (invoiceQuery.isLoading || settingsQuery.isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="animate-pulse">Loading Secure Invoice...</p>
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+          <img src="/cpe-logo.avif" alt="CPE Logo" className="w-20 h-20 object-contain relative animate-bounce" />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium tracking-widest uppercase opacity-70">Securing Session...</p>
+        </div>
       </div>
     );
   }
@@ -138,8 +144,8 @@ export default function ClientInvoice() {
       <header className="sticky top-0 z-50 backdrop-blur-md border-b border-white/5 bg-black/40">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-gradient-to-tr from-primary to-blue-600 rounded-lg shadow-lg">
-              <ShieldCheck className="w-6 h-6 text-white" />
+            <div className="p-1 bg-white/5 rounded-lg border border-white/10">
+              <img src="/cpe-logo.avif" alt="CPE Logo" className="w-8 h-8 object-contain" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white uppercase">{settings?.siteName || "CPE BOOTCAMP"}</span>
           </div>
@@ -198,12 +204,62 @@ export default function ClientInvoice() {
                  animate={{ opacity: 1, y: 0 }}
                  className="mt-2 text-xl font-medium text-slate-400 flex items-center justify-center gap-2"
                >
-                 ≈ {cryptoAmount} {primaryQrCode.network.toUpperCase()}
+                 ≈ {cryptoAmount} {primaryQrCode.coin} ({primaryQrCode.network})
                  <div className="w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
                </motion.div>
              )}
           </div>
         </div>
+
+        {/* Dr. Thompson Endorsement Video */}
+        <section className="relative group">
+           <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-primary/20 rounded-[2rem] blur-xl opacity-50 group-hover:opacity-75 transition duration-500" />
+           <Card className="relative bg-black/60 border-white/10 overflow-hidden rounded-[2rem] shadow-2xl backdrop-blur-xl">
+             <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
+               <div className="md:col-span-3 p-8 space-y-6">
+                 <div className="flex items-center gap-3">
+                   <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 px-3 py-1">
+                     <UserCheck className="w-3.5 h-3.5 mr-1.5" />
+                     EXECUTIVE ENDORSEMENT
+                   </Badge>
+                 </div>
+                 <div className="space-y-2">
+                   <h3 className="text-2xl font-bold text-white leading-tight">
+                     Official Message from <span className="text-primary">Dr. Thompson</span>
+                   </h3>
+                   <p className="text-slate-400 text-sm leading-relaxed">
+                     Dr. Thompson highly recommends all candidates to utilize **USDT (Tether)** for secure, instantaneous, and low-fee transaction processing. Watch the briefing below to understand why this is our preferred settlement method.
+                   </p>
+                 </div>
+                 <div className="flex items-center gap-4 py-2">
+                   <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Instant Verification Enabled</span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Zero Network Congestion</span>
+                   </div>
+                 </div>
+               </div>
+               <div className="md:col-span-2 relative h-[300px] md:h-auto bg-slate-900 overflow-hidden">
+                 <video 
+                   src="/assets/videos/CPE.mp4" 
+                   className="absolute inset-0 w-full h-full object-cover opacity-80"
+                   controls
+                   poster="/assets/images/video-poster.jpg"
+                 >
+                   Your browser does not support the video tag.
+                 </video>
+                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                 <div className="absolute bottom-4 left-4 flex items-center gap-2 pointer-events-none">
+                    <Play className="w-4 h-4 text-white fill-white" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">DR. THOMPSON briefing</span>
+                 </div>
+               </div>
+             </div>
+           </Card>
+        </section>
 
         {/* Master Payment Card */}
         <Card className="bg-white/5 border-white/10 overflow-hidden shadow-2xl rounded-3xl">
@@ -271,7 +327,7 @@ export default function ClientInvoice() {
             <Alert className="bg-red-500/10 border-red-500/20 text-red-200 py-4">
               <AlertCircle className="h-5 w-5 text-red-400" />
               <AlertDescription className="text-xs leading-relaxed">
-                IMPORTANT: Transfer precisely <strong>{cryptoAmount || invoice.amountUsd} {primaryQrCode.network.toUpperCase()}</strong>. Transmitting on any network other than <strong>{primaryQrCode.network.toUpperCase()}</strong> will cause permanent loss of funds.
+                IMPORTANT: Transfer precisely <strong>{cryptoAmount || invoice.amountUsd} {primaryQrCode.coin}</strong>. Transmitting on any network other than <strong>{primaryQrCode.network}</strong> (using {primaryQrCode.coin}) will cause permanent loss of funds.
               </AlertDescription>
             </Alert>
 

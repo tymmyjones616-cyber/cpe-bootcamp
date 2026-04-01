@@ -28,9 +28,10 @@ export function useAuth(options?: UseAuthOptions) {
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
+      const err = error as any;
       if (
-        error instanceof TRPCClientError &&
-        error.data?.code === "UNAUTHORIZED"
+        err instanceof TRPCClientError &&
+        err.data?.code === "UNAUTHORIZED"
       ) {
         return;
       }
@@ -42,10 +43,6 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,

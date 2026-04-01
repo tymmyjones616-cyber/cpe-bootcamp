@@ -11,10 +11,21 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Plus, X, Upload, Sparkles } from "lucide-react";
 
-const NETWORKS = ["btc", "usdt_trc20", "usdt_erc20", "usdt_bep20", "eth", "usdc", "eth_base", "eth_arbitrum"];
+const COINS = ["BTC", "ETH", "USDT", "USDC", "BNB"];
+const NETWORKS = [
+  "Bitcoin",
+  "Ethereum (ERC20)",
+  "Tron (TRC20)",
+  "BNB Smart Chain (BEP20)",
+  "Polygon",
+  "Arbitrum One",
+  "Base",
+  "Solana"
+];
 const EXCHANGES = ["binance", "coinbase", "bybit", "ndax", "bitget"];
 
 interface QrCodeEntry {
+  coin: string;
   network: string;
   walletAddress: string;
   qrCodeFile?: File;
@@ -46,7 +57,7 @@ export default function AdminInvoiceForm({ onSuccess }: { onSuccess?: () => void
   const [selectedExchange, setSelectedExchange] = useState("");
   const [showQrDialog, setShowQrDialog] = useState(false);
   const [showVideoDialog, setShowVideoDialog] = useState(false);
-  const [newQr, setNewQr] = useState<QrCodeEntry>({ network: "", walletAddress: "" });
+  const [newQr, setNewQr] = useState<QrCodeEntry>({ coin: "", network: "", walletAddress: "" });
   const [newVideo, setNewVideo] = useState<VideoTutorialEntry>({ exchange: "", videoUrl: "" });
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [generatingInstructions, setGeneratingInstructions] = useState(false);
@@ -125,8 +136,8 @@ export default function AdminInvoiceForm({ onSuccess }: { onSuccess?: () => void
   });
 
   const handleAddQrCode = async () => {
-    if (!newQr.network || !newQr.walletAddress) {
-      toast.error("Please fill in network and wallet address");
+    if (!newQr.coin || !newQr.network || !newQr.walletAddress) {
+      toast.error("Please fill in coin, network and wallet address");
       return;
     }
 
@@ -135,14 +146,14 @@ export default function AdminInvoiceForm({ onSuccess }: { onSuccess?: () => void
       reader.onload = (e) => {
         const base64 = e.target?.result as string;
         setQrCodes([...qrCodes, { ...newQr, qrCodePreview: base64 }]);
-        setNewQr({ network: "", walletAddress: "" });
+        setNewQr({ coin: "", network: "", walletAddress: "" });
         setShowQrDialog(false);
         toast.success("QR code added");
       };
       reader.readAsDataURL(newQr.qrCodeFile);
     } else {
       setQrCodes([...qrCodes, { ...newQr, qrCodePreview: undefined }]);
-      setNewQr({ network: "", walletAddress: "" });
+      setNewQr({ coin: "", network: "", walletAddress: "" });
       setShowQrDialog(false);
       toast.success("QR code entry added");
     }
@@ -177,6 +188,7 @@ export default function AdminInvoiceForm({ onSuccess }: { onSuccess?: () => void
     });
 
     const qrCodesData = qrCodes.map(qr => ({
+      coin: qr.coin,
       network: qr.network,
       walletAddress: qr.walletAddress,
       qrCodeUrl: qr.qrCodePreview || undefined,
@@ -350,8 +362,11 @@ export default function AdminInvoiceForm({ onSuccess }: { onSuccess?: () => void
               {qrCodes.map((qr, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <Badge>{qr.network.toUpperCase()}</Badge>
-                    <p className="text-sm text-muted-foreground mt-1 font-mono break-all">{qr.walletAddress}</p>
+                    <div className="flex gap-2 mb-1">
+                      <Badge variant="outline">{qr.coin}</Badge>
+                      <Badge>{qr.network}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-mono break-all">{qr.walletAddress}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -421,20 +436,37 @@ export default function AdminInvoiceForm({ onSuccess }: { onSuccess?: () => void
             <DialogDescription>Add a cryptocurrency network with wallet address and QR code</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Network *</Label>
-              <Select value={newQr.network} onValueChange={(val) => setNewQr({ ...newQr, network: val })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select network" />
-                </SelectTrigger>
-                <SelectContent>
-                  {NETWORKS.map((net) => (
-                    <SelectItem key={net} value={net}>
-                      {net.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Coin *</Label>
+                <Select value={newQr.coin} onValueChange={(val) => setNewQr({ ...newQr, coin: val })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select coin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COINS.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Network *</Label>
+                <Select value={newQr.network} onValueChange={(val) => setNewQr({ ...newQr, network: val })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select network" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NETWORKS.map((net) => (
+                      <SelectItem key={net} value={net}>
+                        {net}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label>Wallet Address *</Label>
