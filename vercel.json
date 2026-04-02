@@ -1,7 +1,7 @@
 {
-  "buildCommand": "npm run build",
+  "installCommand": "corepack enable && pnpm install",
+  "buildCommand": "pnpm run build",
   "outputDirectory": "dist/public",
-  "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
     {
       "source": "/api/(.*)",
