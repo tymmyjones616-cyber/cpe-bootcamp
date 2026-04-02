@@ -1,15 +1,15 @@
 import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { getSessionCookieOptions } from "./_core/cookies.js";
+import { systemRouter } from "./_core/systemRouter.js";
+import { publicProcedure, router, protectedProcedure } from "./_core/trpc.js";
 import { z } from "zod";
-import { createInvoice, listInvoices, getInvoiceBySlug, updateInvoiceStatus, createPaymentProof, getPaymentProofsByInvoiceId, updatePaymentProofStatus, listWalletConfigs, upsertWalletConfig, listFaqItems, createAuditLog, getInvoiceById, listPendingPaymentProofs, getPaymentProofsWithInvoices, getPaymentProofById, getInvoiceQrCodes, getInvoiceVideoTutorials, deleteInvoice, getInvoiceByNumber, createInvoiceQrCode, createInvoiceVideoTutorial, updateInvoice, deleteInvoiceQrCode, deleteInvoiceVideoTutorial, getSiteSettings, updateSiteSettings } from "./db";
-import { storagePut } from "./storage";
+import { createInvoice, listInvoices, getInvoiceBySlug, updateInvoiceStatus, createPaymentProof, getPaymentProofsByInvoiceId, updatePaymentProofStatus, listWalletConfigs, upsertWalletConfig, listFaqItems, createAuditLog, getInvoiceById, listPendingPaymentProofs, getPaymentProofsWithInvoices, getPaymentProofById, getInvoiceQrCodes, getInvoiceVideoTutorials, deleteInvoice, getInvoiceByNumber, createInvoiceQrCode, createInvoiceVideoTutorial, updateInvoice, deleteInvoiceQrCode, deleteInvoiceVideoTutorial, getSiteSettings, updateSiteSettings } from "./db.js";
+import { storagePut } from "./storage.js";
 import { nanoid } from "nanoid";
-import { notifyOwner } from "./_core/notification";
-import { invokeLLM } from "./_core/llm";
-import { fetchCryptoRates } from "./services/exchange";
-import { sendInvoiceEmail, sendPaymentProofNotification, sendPaymentStatusUpdate } from "./services/email";
+import { notifyOwner } from "./_core/notification.js";
+import { invokeLLM } from "./_core/llm.js";
+import { fetchCryptoRates } from "./services/exchange.js";
+import { sendInvoiceEmail, sendPaymentProofNotification, sendPaymentStatusUpdate } from "./services/email.js";
 
 export const appRouter = router({
   system: systemRouter,
