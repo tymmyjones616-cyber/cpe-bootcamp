@@ -32,14 +32,17 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+export async function createServerApp() {
   const app = express();
   const server = createServer(app);
+  
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  
   // tRPC API
   app.use(
     "/api/trpc",
@@ -48,6 +51,7 @@ async function startServer() {
       createContext,
     })
   );
+  
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -55,6 +59,12 @@ async function startServer() {
     serveStatic(app);
   }
 
+  return { app, server };
+}
+
+async function startServer() {
+  const { app, server } = await createServerApp();
+  
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
 
@@ -75,4 +85,13 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+// Only start the server if this file is run directly (not imported as a module)
+if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
+  startServer().catch(console.error);
+}
+
+// Export the app factory for Vercel
+export default async (req: any, res: any) => {
+  const { app } = await createServerApp();
+  return app(req, res);
+};
