@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Plus, X, Upload, Sparkles } from "lucide-react";
 
-const COINS = ["BTC", "ETH", "USDT", "USDC", "BNB"];
+const COINS = ["BTC", "ETH", "USDT", "USDC", "BNB", "SOL"];
 const NETWORKS = [
   "Bitcoin",
   "Ethereum (ERC20)",

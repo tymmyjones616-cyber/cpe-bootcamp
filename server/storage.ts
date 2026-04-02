@@ -3,7 +3,7 @@ import { ENV } from './_core/env';
 
 // Initialize Supabase client
 const supabase = createClient(ENV.supabaseUrl, ENV.supabaseServiceKey);
-const BUCKET_NAME = "proofs"; // Ensure this bucket exists in Supabase
+const BUCKET_NAME = "payment-proofs"; // Update this in your Supabase dashboard
 
 export async function storagePut(
   relKey: string,
@@ -20,7 +20,8 @@ export async function storagePut(
     });
 
   if (error) {
-    throw new Error(`Supabase Storage upload failed: ${error.message}`);
+    console.error(`Supabase Storage upload error for bucket '${BUCKET_NAME}':`, error);
+    throw new Error(`Supabase Storage upload failed: ${error.message}. Please ensure the '${BUCKET_NAME}' bucket exists and is public.`);
   }
 
   const { data: { publicUrl } } = supabase.storage

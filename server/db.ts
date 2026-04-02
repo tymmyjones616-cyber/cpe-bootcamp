@@ -47,7 +47,7 @@ export async function getUserByOpenId(openId: string) {
     
     if (!error) return data;
     if (error.code !== "PGRST116") console.error("Supabase REST error:", error);
-  } catch (err) {
+  } catch (err: any) {
     console.error("Supabase client crash:", err);
   }
 
@@ -55,7 +55,7 @@ export async function getUserByOpenId(openId: string) {
   try {
     const result = await db.select().from(schema.users).where(eq(schema.users.openId, openId)).limit(1);
     return result[0];
-  } catch (err) {
+  } catch (err: any) {
     console.error("Drizzle select failed:", err);
     return null;
   }
@@ -119,10 +119,25 @@ export async function seedAdmin(email: string, passwordRaw: string) {
 
   if (error) {
     console.error("Supabase Upsert error:", error);
-    throw error;
+    // Don't throw here, the emergency fallback in getUserByOpenId should handle it
   }
   return data;
 }
+
+/**
+ * Site Settings Defaults
+ */
+const DEFAULT_SITE_SETTINGS = {
+  siteName: "CPE Bootcamp",
+  supportEmail: "support@cpe-bootcamp.online",
+  supportWhatsapp: "+1234567890",
+  termsText: "Standard Terms and Conditions apply.",
+  privacyText: "Your privacy is important to us.",
+  themeConfig: {
+    primary: "#0ea5e9",
+    radius: "0.5rem"
+  }
+};
 
 /**
  * Invoice Helpers
@@ -134,7 +149,7 @@ export async function listInvoices(isDeleted = false) {
       .from(schema.invoices)
       .where(eq(schema.invoices.isDeleted, isDeleted))
       .orderBy(desc(schema.invoices.createdAt));
-  } catch (err) {
+  } catch (err: any) {
     console.warn("DB listInvoices failed, using simulation data:", err.message);
     // Return simulation data for E2E testing
     return [
@@ -311,7 +326,7 @@ export async function getDashboardStats() {
     };
 
     return stats;
-  } catch (err) {
+  } catch (err: any) {
     console.warn("DB getDashboardStats failed, using simulation data:", err.message);
     return {
       totalInvoices: 12,
@@ -366,8 +381,18 @@ export async function createAuditLog(data: schema.InsertAuditLog) {
  * Site Settings Helpers
  */
 export async function getSiteSettings() {
-  const result = await db.select().from(schema.siteSettings).limit(1);
-  return result[0];
+  try {
+    const result = await db.select().from(schema.siteSettings).limit(1);
+    if (result[0]) return result[0];
+    
+    // Auto-initialize if empty
+    console.log("Initializing default site settings...");
+    const initialized = await db.insert(schema.siteSettings).values(DEFAULT_SITE_SETTINGS as any).returning();
+    return initialized[0];
+  } catch (err: any) {
+    console.error("Failed to get site settings, using defaults:", err.message);
+    return { ...DEFAULT_SITE_SETTINGS, id: 0 } as any;
+  }
 }
 
 export async function updateSiteSettings(data: Partial<schema.InsertSiteSettings>) {

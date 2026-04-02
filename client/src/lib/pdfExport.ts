@@ -1,4 +1,5 @@
 import html2pdf from "html2pdf.js";
+import { toast } from "sonner";
 
 interface InvoiceData {
   invoiceNumber: string;
@@ -323,10 +324,23 @@ export async function generateInvoicePDF(invoice: InvoiceData) {
     margin: 0,
     filename: `${invoice.invoiceNumber}.pdf`,
     image: { type: "jpeg", quality: 0.98 },
-    html2canvas: { scale: 2 },
+    html2canvas: { 
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false
+    },
     jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
   };
 
   // Generate PDF
-  html2pdf().set(options).from(htmlContent).save();
+  console.log("Generating PDF for invoice:", invoice.invoiceNumber);
+  try {
+    const worker = html2pdf().set(options).from(htmlContent);
+    await worker.save();
+    console.log("PDF generation success");
+  } catch (err) {
+    console.error("PDF Export error:", err);
+    toast.error("Failed to generate PDF. Please try again or contact support.");
+  }
 }

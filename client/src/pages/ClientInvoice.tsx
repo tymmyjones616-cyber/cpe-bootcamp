@@ -56,7 +56,7 @@ export default function ClientInvoice() {
 
   const cryptoAmount = useMemo(() => {
     if (!invoice || !primaryQrCode) return "0.00";
-    const coin = primaryQrCode.coin.toLowerCase();
+    const coin = (primaryQrCode.coin || "usdt").toLowerCase();
     let rate = rates ? (rates[coin] || 1) : 1;
     
     // Explicitly handle USDT/USDC as 1:1 if rate is missing or likely 1.0
@@ -93,12 +93,12 @@ export default function ClientInvoice() {
     toast.success(`${label} copied to clipboard`);
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     const element = document.getElementById('invoice-content');
     if (!element) return;
     
     const opt = {
-      margin: [10, 10, 10, 10],
+      margin: 10,
       filename: `Invoice_${invoice.id}_${invoice.clientName.replace(/\s+/g, '_')}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
@@ -106,8 +106,10 @@ export default function ClientInvoice() {
     };
     
     try {
-      html2pdf().set(opt).from(element).save();
-      toast.success("Preparing PDF invoice...");
+      toast.info("Generating your PDF invoice...");
+      const worker = html2pdf().set(opt).from(element);
+      await worker.save();
+      toast.success("PDF invoice downloaded successfully");
     } catch (err) {
       console.error("PDF generation failed:", err);
       toast.error("Failed to generate PDF. Please try again.");
@@ -244,10 +246,11 @@ export default function ClientInvoice() {
                       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Instant Verification Enabled</span>
                    </div>
-                   <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Zero Network Congestion</span>
-                   </div>
+                   {primaryQrCode && primaryQrCode.coin && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full">
+                      <span className="text-xs font-bold text-zinc-500 uppercase tracking-tight">{primaryQrCode.coin}</span>
+                    </div>
+                  )}
                  </div>
                </div>
                <div className="md:col-span-2 relative h-[300px] md:h-auto bg-slate-900 overflow-hidden">
@@ -455,6 +458,8 @@ export default function ClientInvoice() {
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
         invoiceSlug={slug || ""}
+        exchangeUsed={invoice.exchange || "Default"}
+        cryptoNetwork={primaryQrCode.network}
         onSuccess={() => {
           setShowPaymentModal(false);
           invoiceQuery.refetch();

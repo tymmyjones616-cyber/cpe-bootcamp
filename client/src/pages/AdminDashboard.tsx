@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
-import { Plus, Search, Copy, CheckCircle, Edit } from "lucide-react";
+import { Plus, Search, Copy, CheckCircle, Edit, FileCheck, Eye, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import AdminInvoiceForm from "./AdminInvoiceForm";
@@ -36,6 +36,8 @@ export default function AdminDashboard() {
   });
 
   const invoicesQuery = trpc.invoices.list.useQuery();
+  const pendingProofsQuery = trpc.paymentProofs.listPending.useQuery();
+  
   const deleteInvoice = trpc.invoices.delete.useMutation({
     onSuccess: () => {
       toast.success("Invoice deleted successfully!");
@@ -226,9 +228,17 @@ export default function AdminDashboard() {
 
         {/* Tabbed Interface */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            <TabsTrigger value="invoices">All Invoices</TabsTrigger>
+            <TabsTrigger value="proofs" className="relative">
+              Pending Proofs
+              {pendingProofsQuery.data && pendingProofsQuery.data.length > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                  {pendingProofsQuery.data.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Analytics Tab */}
@@ -268,7 +278,14 @@ export default function AdminDashboard() {
                             <td className="py-3 px-4">{invoice.clientName}</td>
                             <td className="py-3 px-4 font-semibold">${invoice.amountUsd}</td>
                             <td className="py-3 px-4 text-sm">{new Date(invoice.dueDate).toLocaleDateString()}</td>
-                            <td className="py-3 px-4">{getStatusBadge(invoice.status)}</td>
+                             <td className="py-3 px-4">
+                               {getStatusBadge(invoice.status)}
+                               {invoice.status === 'under_review' && (
+                                 <Badge variant="outline" className="ml-2 bg-blue-500/10 text-blue-500 border-blue-500/20">
+                                   PROOF SUBMITTED
+                                 </Badge>
+                               )}
+                             </td>
                             <td className="py-3 px-4 flex gap-2">
                               <Button
                                 variant="ghost"
@@ -309,6 +326,70 @@ export default function AdminDashboard() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Pending Proofs Tab */}
+          <TabsContent value="proofs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-primary" />
+                  Pending Approvals
+                </CardTitle>
+                <CardDescription>Review and verify payment submissions from clients</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingProofsQuery.isLoading ? (
+                  <div className="text-center py-8">Loading pending proofs...</div>
+                ) : pendingProofsQuery.data?.length === 0 ? (
+                  <div className="text-center py-12 space-y-4">
+                    <div className="flex justify-center">
+                      <CheckCircle className="w-12 h-12 text-zinc-100" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-zinc-300">Queue Clear</p>
+                      <p className="text-sm text-muted-foreground">All payment proofs have been processed</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingProofsQuery.data?.map(({ proof, invoice }) => (
+                      <div key={proof.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-muted/30 rounded-xl border border-border/50 gap-4 hover:border-primary/30 transition-colors">
+                        <div className="flex gap-4 items-center">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-border">
+                            <img src={proof.imageUrl} alt="Proof" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm text-zinc-500">{invoice.invoiceNumber}</span>
+                              <Badge variant="outline" className="text-[10px] py-0">{proof.cryptoNetwork}</Badge>
+                            </div>
+                            <p className="font-bold">{invoice.clientName}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(proof.submittedAt).toLocaleString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                          <div className="text-right hidden md:block mr-4">
+                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Amount</p>
+                            <p className="font-bold text-primary">${invoice.amountUsd}</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 md:flex-none gap-2"
+                            onClick={() => navigate(`/admin/invoice/${invoice.id}`)}
+                          >
+                            <Eye className="w-4 h-4" />
+                            Verify
+                            <ArrowRight className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>

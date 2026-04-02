@@ -9,11 +9,64 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { generateInvoicePDF } from "@/lib/pdfExport";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle,
+  Loader2,
+  FileText
+} from "lucide-react";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 export default function InvoiceDetails() {
   const { id } = useParams<{ id: string }>();
   const [selectedProof, setSelectedProof] = useState<any>(null);
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
   const [, setLocation] = useLocation();
+  const utils = trpc.useUtils();
+
+  const approveMutation = trpc.paymentProofs.approve.useMutation({
+    onSuccess: () => {
+      toast.success("Payment proof approved and invoice marked as paid");
+      utils.invoices.getById.invalidate(parseInt(id || "0"));
+      utils.paymentProofs.getByInvoiceId.invalidate(parseInt(id || "0"));
+      setIsConfirmOpen(false);
+    },
+    onError: (err) => {
+      toast.error(`Failed to approve: ${err.message}`);
+    }
+  });
+
+  const rejectMutation = trpc.paymentProofs.reject.useMutation({
+    onSuccess: () => {
+      toast.success("Payment proof rejected");
+      utils.invoices.getById.invalidate(parseInt(id || "0"));
+      utils.paymentProofs.getByInvoiceId.invalidate(parseInt(id || "0"));
+      setRejectId(null);
+      setRejectReason("");
+      setAdminNotes("");
+    },
+    onError: (err) => {
+      toast.error(`Failed to reject: ${err.message}`);
+    }
+  });
 
   const invoiceQuery = trpc.invoices.getById.useQuery(parseInt(id || "0"), {
     enabled: !!id,
@@ -174,13 +227,38 @@ export default function InvoiceDetails() {
                             </div>
                           </div>
                         )}
-                        <div className="flex-1">
+                        <div className="flex-1 space-y-4">
                           {proof.adminNotes ? (
                             <div className="bg-blue-500/5 border border-blue-500/20 p-4 rounded-xl text-sm italic text-blue-200">
                               "{proof.adminNotes}"
                             </div>
                           ) : (
                             <div className="text-sm text-zinc-500 italic">No administrative notes recorded for this submission.</div>
+                          )}
+
+                          {proof.status === 'pending' && (
+                            <div className="flex gap-3 pt-2">
+                              <Button 
+                                size="sm" 
+                                className="bg-green-600 hover:bg-green-500 text-white gap-2 h-10 px-4"
+                                onClick={() => {
+                                  setConfirmId(proof.id);
+                                  setIsConfirmOpen(true);
+                                }}
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                Approve Payment
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-2 h-10 px-4"
+                                onClick={() => setRejectId(proof.id)}
+                              >
+                                <XCircle className="w-4 h-4" />
+                                Reject Proof
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -260,6 +338,87 @@ export default function InvoiceDetails() {
             </div>
           </DialogContent>
         </Dialog>
+        {/* Approve Confirmation Dialog */}
+        <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+          <AlertDialogContent className="bg-zinc-950 border-zinc-800">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl">Approve Payment Proof?</AlertDialogTitle>
+              <AlertDialogDescription className="text-zinc-400">
+                This will mark invoice <strong>{invoice.invoiceNumber}</strong> as **PAID** and notify the client. 
+                Are you sure the payment has been verified?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="approve-notes" className="text-zinc-300">Admin Notes (Optional)</Label>
+                <Input 
+                  id="approve-notes"
+                  placeholder="e.g., Verified on Etherscan" 
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  className="bg-zinc-900 border-zinc-800 text-white"
+                />
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => confirmId && approveMutation.mutate({ proofId: confirmId, adminNotes })}
+                className="bg-green-600 hover:bg-green-500 text-white"
+                disabled={approveMutation.isPending}
+              >
+                {approveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Approve"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Reject Dialog */}
+        <AlertDialog open={rejectId !== null} onOpenChange={(open) => !open && setRejectId(null)}>
+          <AlertDialogContent className="bg-zinc-950 border-zinc-800">
+            <AlertDialogHeader>
+              <div className="flex items-center gap-2 text-red-500 mb-2">
+                <AlertCircle className="w-5 h-5" />
+                <AlertDialogTitle className="text-xl">Reject Payment Proof</AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="text-zinc-400">
+                Please provide a reason for rejection. This will be sent to the client.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reject-reason" className="text-zinc-300">Rejection Reason *</Label>
+                <Input 
+                  id="reject-reason"
+                  placeholder="e.g., Transaction ID not found" 
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="bg-zinc-900 border-zinc-800 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reject-notes" className="text-zinc-300">Internal Admin Notes (Optional)</Label>
+                <Textarea 
+                  id="reject-notes"
+                  placeholder="Additional details for internal record..." 
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  className="bg-zinc-900 border-zinc-800 text-white"
+                />
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => rejectId && rejectMutation.mutate({ proofId: rejectId, reason: rejectReason, adminNotes })}
+                className="bg-red-600 hover:bg-red-500 text-white"
+                disabled={!rejectReason || rejectMutation.isPending}
+              >
+                {rejectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reject Proof"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

@@ -74,7 +74,7 @@ export const appRouter = router({
         walletAddresses: z.record(z.string(), z.string()),
         exchange: z.string().optional(),
         qrCodes: z.array(z.object({
-          coin: z.string(),
+          coin: z.string().optional().default("USDT"),
           network: z.string(),
           walletAddress: z.string(),
           qrCodeUrl: z.string().optional(),
@@ -221,7 +221,7 @@ export const appRouter = router({
         exchange: z.string().optional(),
         walletAddresses: z.record(z.string(), z.string()).optional(),
         qrCodes: z.array(z.object({
-          coin: z.string(),
+          coin: z.string().optional().default("USDT"),
           network: z.string(),
           walletAddress: z.string(),
           qrCodeUrl: z.string().optional(),
@@ -490,21 +490,30 @@ export const appRouter = router({
         amountUsd: z.string(),
       }))
       .mutation(async ({ input }) => {
-        const response = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: "You are a professional invoice description writer for CPE Bootcamp. Generate concise, professional invoice descriptions.",
-            },
-            {
-              role: "user",
-              content: `Generate a professional invoice description for a CPE Bootcamp ${input.serviceType} bootcamp for client ${input.clientName}. Amount: $${input.amountUsd}. Keep it to 2-3 sentences.`,
-            },
-          ],
-        });
+        if (!process.env.OPENAI_API_KEY) {
+          throw new Error("AI services are currently unavailable (Missing API Key). Please enter the description manually.");
+        }
+        
+        try {
+          const response = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: "You are a professional invoice description writer for CPE Bootcamp. Generate concise, professional invoice descriptions.",
+              },
+              {
+                role: "user",
+                content: `Generate a professional invoice description for a CPE Bootcamp ${input.serviceType} bootcamp for client ${input.clientName}. Amount: $${input.amountUsd}. Keep it to 2-3 sentences.`,
+              },
+            ],
+          });
 
-        const description = response.choices[0]?.message.content || "";
-        return { description };
+          const description = response.choices[0]?.message.content || "";
+          return { description };
+        } catch (error) {
+          console.error("AI service error:", error);
+          throw new Error("Failed to generate description with AI. Please try again or enter manually.");
+        }
       }),
 
     generatePaymentInstructions: protectedProcedure
@@ -544,12 +553,12 @@ export const appRouter = router({
       const proofs = await getPaymentProofsWithInvoices();
 
       const totalRevenue = invoicesList
-        .filter(inv => inv.status === 'paid')
-        .reduce((sum, inv) => sum + Number(inv.amountUsd), 0);
+        .filter((inv: any) => inv.status === 'paid')
+        .reduce((sum: number, inv: any) => sum + Number(inv.amountUsd), 0);
 
-      const pendingCount = proofs.filter(p => p.proof.status === 'pending').length;
+      const pendingCount = proofs.filter((p: any) => p.proof.status === 'pending').length;
       const successRate = invoicesList.length > 0 
-        ? (invoicesList.filter(inv => inv.status === 'paid').length / invoicesList.length) * 100 
+        ? (invoicesList.filter((inv: any) => inv.status === 'paid').length / invoicesList.length) * 100 
         : 0;
 
       return {

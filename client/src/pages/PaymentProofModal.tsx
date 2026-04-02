@@ -12,10 +12,12 @@ interface PaymentProofModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoiceSlug: string;
+  exchangeUsed: string;
+  cryptoNetwork: string;
   onSuccess?: () => void;
 }
 
-export function PaymentProofModal({ open, onOpenChange, invoiceSlug, onSuccess }: PaymentProofModalProps) {
+export function PaymentProofModal({ open, onOpenChange, invoiceSlug, exchangeUsed, cryptoNetwork, onSuccess }: PaymentProofModalProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [clientNotes, setClientNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -78,8 +80,8 @@ export function PaymentProofModal({ open, onOpenChange, invoiceSlug, onSuccess }
       invoiceSlug,
       imageBase64: preview.split(",")[1] || preview,
       transactionId: "", // Not required from client
-      exchangeUsed: "", // Admin configured
-      cryptoNetwork: "", // Admin configured
+      exchangeUsed,
+      cryptoNetwork,
       clientNotes,
     });
   };
