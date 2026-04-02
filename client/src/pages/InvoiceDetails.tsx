@@ -116,6 +116,7 @@ export default function InvoiceDetails() {
       qrCodeUrl: primaryQrCode?.qrCodeUrl || undefined,
       walletAddress: primaryQrCode?.walletAddress || undefined,
       network: primaryQrCode?.network || undefined,
+      coin: primaryQrCode?.coin || undefined,
       exchange: invoice.exchange || undefined,
       paymentInstructions: invoice.paymentInstructions || undefined,
     });

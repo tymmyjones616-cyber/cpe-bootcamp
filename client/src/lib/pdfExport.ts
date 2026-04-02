@@ -12,6 +12,7 @@ interface InvoiceData {
   qrCodeUrl?: string;
   walletAddress?: string;
   network?: string;
+  coin?: string;
   exchange?: string;
   paymentInstructions?: string;
 }
@@ -292,8 +293,11 @@ export async function generateInvoicePDF(invoice: InvoiceData) {
           <div class="payment-method">
             <img src="${invoice.qrCodeUrl}" alt="QR Code" class="qr-code">
             <div class="payment-details">
+              <div class="payment-details-label">Cryptocurrency</div>
+              <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">${invoice.coin || 'USDT'}</div>
+              
               <div class="payment-details-label">Network</div>
-              <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">${invoice.network?.toUpperCase() || 'CRYPTOCURRENCY'}</div>
+              <div style="font-size: 14px; font-weight: 600; margin-bottom: 15px; color: #0A84FF;">${invoice.network?.toUpperCase() || 'UNKNOWN'}</div>
               
               ${invoice.exchange ? `
               <div class="payment-details-label">Exchange</div>

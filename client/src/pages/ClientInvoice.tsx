@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PaymentProofModal } from "./PaymentProofModal";
 import { motion, AnimatePresence } from "framer-motion";
 import html2pdf from 'html2pdf.js';
+import { CRYPTO_CONFIG, type CryptoCoin } from "../../../shared/const";
 
 export default function ClientInvoice() {
   const { slug } = useParams<{ slug: string }>();
@@ -339,8 +340,9 @@ export default function ClientInvoice() {
 
             <Alert className="bg-red-500/10 border-red-500/20 text-red-200 py-4">
               <AlertCircle className="h-5 w-5 text-red-400" />
-              <AlertDescription className="text-xs leading-relaxed">
-                IMPORTANT: Transfer precisely <strong>{cryptoAmount || invoice.amountUsd} {primaryQrCode.coin}</strong>. Transmitting on any network other than <strong>{primaryQrCode.network}</strong> (using {primaryQrCode.coin}) will cause permanent loss of funds.
+              <AlertDescription className="text-sm font-medium leading-relaxed">
+                <span className="block mb-1 text-red-100 uppercase tracking-widest text-[10px] font-bold">Transfer Authentication Required</span>
+                IMPORTANT: Precisely transfer <strong>{cryptoAmount || invoice.amountUsd} {primaryQrCode.coin}</strong> via the <strong>{primaryQrCode.network}</strong> network. Sending via any other network will result in permanent loss of assets.
               </AlertDescription>
             </Alert>
 

@@ -11,17 +11,8 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
 
-const COINS = ["BTC", "ETH", "USDT", "USDC", "BNB", "SOL"];
-const NETWORKS = [
-  "Bitcoin",
-  "Ethereum (ERC20)",
-  "Tron (TRC20)",
-  "BNB Smart Chain (BEP20)",
-  "Polygon",
-  "Arbitrum One",
-  "Base",
-  "Solana"
-];
+import { CRYPTO_CONFIG, type CryptoCoin } from "../../../shared/const";
+
 const EXCHANGES = ["binance", "coinbase", "bybit", "ndax", "bitget"];
 
 interface EditInvoiceModalProps {
@@ -317,9 +308,9 @@ export function EditInvoiceModal({ open, onOpenChange, invoice, onSuccess }: Edi
                           <SelectValue placeholder="Select coin" />
                         </SelectTrigger>
                         <SelectContent>
-                          {COINS.map((c) => (
+                          {(Object.keys(CRYPTO_CONFIG) as CryptoCoin[]).map((c) => (
                             <SelectItem key={c} value={c}>
-                              {c}
+                              {CRYPTO_CONFIG[c].name} ({c})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -332,7 +323,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice, onSuccess }: Edi
                           <SelectValue placeholder="Select network" />
                         </SelectTrigger>
                         <SelectContent>
-                          {NETWORKS.map((net) => (
+                          {newQr.coin && (CRYPTO_CONFIG[newQr.coin as CryptoCoin].networks as readonly string[]).map((net) => (
                             <SelectItem key={net} value={net}>
                               {net}
                             </SelectItem>
