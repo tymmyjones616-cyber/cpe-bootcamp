@@ -9,15 +9,24 @@ import { createClient } from "@supabase/supabase-js";
 // Initialize Supabase client for reliable auth lookups (REST API fallback)
 const supabase = createClient(ENV.supabaseUrl, ENV.supabaseServiceKey);
 
-// Initialize Postgres client
-// We use the DATABASE_URL from .env which is the most portable way
-const client = postgres(ENV.databaseUrl, {
-  ssl: "require",
-  max: 1 // For serverless environments, keep pool size small
-});
+// Initialize Postgres client lazily or defensively
+let db: any;
+try {
+  if (ENV.databaseUrl) {
+    const client = postgres(ENV.databaseUrl, {
+      ssl: "require",
+      max: 1 // For serverless environments, keep pool size small
+    });
+    db = drizzle(client, { schema });
+    console.log("Database connection initialized successfully");
+  } else {
+    console.warn("DATABASE_URL is not set. Database features will be unavailable.");
+  }
+} catch (err: any) {
+  console.error("Failed to initialize database connection:", err.message);
+}
 
-// Initialize Drizzle ORM
-export const db = drizzle(client, { schema });
+export { db };
 
 /**
  * User Helpers
@@ -38,27 +47,32 @@ export async function getUserByOpenId(openId: string) {
   }
 
   // Use Supabase REST client for high reliability in auth flows
-  try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("openId", openId)
-      .single();
-    
-    if (!error) return data;
-    if (error.code !== "PGRST116") console.error("Supabase REST error:", error);
-  } catch (err: any) {
-    console.error("Supabase client crash:", err);
+  if (ENV.supabaseUrl && ENV.supabaseServiceKey) {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("openId", openId)
+        .single();
+      
+      if (!error && data) return data;
+      if (error && error.code !== "PGRST116") console.error("Supabase REST error:", error);
+    } catch (err: any) {
+      console.error("Supabase client crash:", err);
+    }
   }
 
   // Final fallback to Drizzle
-  try {
-    const result = await db.select().from(schema.users).where(eq(schema.users.openId, openId)).limit(1);
-    return result[0];
-  } catch (err: any) {
-    console.error("Drizzle select failed:", err);
-    return null;
+  if (db) {
+    try {
+      const result = await db.select().from(schema.users).where(eq(schema.users.openId, openId)).limit(1);
+      return result[0];
+    } catch (err: any) {
+      console.error("Drizzle select failed:", err);
+    }
   }
+
+  return null;
 }
 
 export async function getUserById(id: number) {

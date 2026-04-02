@@ -2,14 +2,18 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createInvoice, listInvoices, getInvoiceBySlug, updateInvoiceStatus, createPaymentProof, getPaymentProofsByInvoiceId, updatePaymentProofStatus, listWalletConfigs, upsertWalletConfig, listFaqItems, createAuditLog, getInvoiceById, listPendingPaymentProofs, getPaymentProofsWithInvoices, getPaymentProofById, getInvoiceQrCodes, getInvoiceVideoTutorials, deleteInvoice, getInvoiceByNumber, createInvoiceQrCode, createInvoiceVideoTutorial, updateInvoice, deleteInvoiceQrCode, deleteInvoiceVideoTutorial, getSiteSettings, updateSiteSettings } from "./db";
+import { createInvoice, listInvoices, getInvoiceBySlug, updateInvoiceStatus, createPaymentProof, getPaymentProofsByInvoiceId, updatePaymentProofStatus, listWalletConfigs, upsertWalletConfig, listFaqItems, createAuditLog, getInvoiceById, listPendingPaymentProofs, getPaymentProofsWithInvoices, getPaymentProofById, getInvoiceQrCodes, getInvoiceVideoTutorials, deleteInvoice, getInvoiceByNumber, createInvoiceQrCode, createInvoiceVideoTutorial, updateInvoice, deleteInvoiceQrCode, deleteInvoiceVideoTutorial, getSiteSettings, updateSiteSettings, getUserByOpenId } from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
 import { fetchCryptoRates } from "./services/exchange";
 import { sendInvoiceEmail, sendPaymentProofNotification, sendPaymentStatusUpdate } from "./services/email";
+import bcrypt from "bcryptjs";
+import { sdk } from "./_core/sdk";
+import { ONE_YEAR_MS } from "@shared/const";
 
 export const appRouter = router({
   system: systemRouter,
@@ -18,42 +22,60 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ input, ctx }) => {
-        const { getUserByOpenId } = await import("./db.js");
-        const { sdk } = await import("./_core/sdk.js");
-        const { getSessionCookieOptions } = await import("./_core/cookies.js");
-        const { COOKIE_NAME, ONE_YEAR_MS } = await import("@shared/const.js");
-        const bcrypt = await import("bcryptjs");
-
-        const user = await getUserByOpenId(input.email);
+        console.log(`[AUTH] Login attempt for: ${input.email}`);
         
-        if (!user || user.role !== "admin") {
-          throw new Error("Invalid credentials or unauthorized");
-        }
-        
-        if (!user.password) {
-          throw new Error("Account not configured for password login");
-        }
-        
-        const isValid = await bcrypt.compare(input.password, user.password);
-        if (!isValid) {
-          throw new Error("Invalid credentials");
-        }
+        try {
+          const user = await getUserByOpenId(input.email);
+          
+          if (!user || user.role !== "admin") {
+            console.warn(`[AUTH] User not found or not admin: ${input.email}`);
+            throw new TRPCError({
+              code: 'UNAUTHORIZED',
+              message: 'Invalid credentials or unauthorized',
+            });
+          }
 
-        const token = await sdk.createSessionToken(user.openId, {
-          name: user.name || user.email || ""
-        });
+          if (!user.password) {
+            console.warn(`[AUTH] User has no password set: ${input.email}`);
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Account not configured for password login',
+            });
+          }
 
-        const cookieOptions = getSessionCookieOptions(ctx.req as any);
-        ctx.res.cookie(COOKIE_NAME, token, { 
-          ...cookieOptions,
-          maxAge: ONE_YEAR_MS 
-        });
+          console.log(`[AUTH] User found, comparing password...`);
+          const isValid = await bcrypt.compare(input.password, user.password);
+          if (!isValid) {
+            console.warn(`[AUTH] Password mismatch for: ${input.email}`);
+            throw new TRPCError({
+              code: 'UNAUTHORIZED',
+              message: 'Invalid credentials',
+            });
+          }
 
-        return { success: true };
+          console.log(`[AUTH] Login successful for: ${input.email}. Generating token...`);
+          const token = await sdk.createSessionToken(user.openId, {
+            name: user.name || user.email || ""
+          });
+
+          const cookieOptions = getSessionCookieOptions(ctx.req as any);
+          ctx.res.cookie(COOKIE_NAME, token, { 
+            ...cookieOptions,
+            maxAge: ONE_YEAR_MS 
+          });
+
+          console.log(`[AUTH] Session cookie set for: ${input.email}`);
+          return { success: true };
+        } catch (err: any) {
+          console.error(`[AUTH] Login error for ${input.email}:`, err);
+          if (err instanceof TRPCError) throw err;
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: err.message || 'Authentication failed',
+          });
+        }
       }),
     logout: publicProcedure.mutation(({ ctx }) => {
-      const { getSessionCookieOptions } = require("./_core/cookies.js");
-      const { COOKIE_NAME } = require("@shared/const.js");
       const cookieOptions = getSessionCookieOptions(ctx.req as any);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions });
       return {
