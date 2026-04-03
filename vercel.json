@@ -2,11 +2,6 @@
   "installCommand": "corepack enable && pnpm install",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist/public",
-  "functions": {
-    "api/_handler.mjs": {
-      "runtime": "@vercel/node@3"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
