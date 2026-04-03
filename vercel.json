@@ -2,6 +2,11 @@
   "installCommand": "corepack enable && pnpm install",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist/public",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "server/**/*.ts,shared/**/*.ts,drizzle/**/*.ts,server/**/*.js,shared/**/*.js,drizzle/**/*.js"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
