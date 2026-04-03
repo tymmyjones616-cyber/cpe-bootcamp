@@ -3,14 +3,14 @@
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist/public",
   "functions": {
-    "api/index.ts": {
-      "includeFiles": "server/**/*.ts,shared/**/*.ts,drizzle/**/*.ts,server/**/*.js,shared/**/*.js,drizzle/**/*.js"
+    "api/_handler.mjs": {
+      "runtime": "@vercel/node@3"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api/_handler.mjs"
     },
     {
       "source": "/(.*)",
