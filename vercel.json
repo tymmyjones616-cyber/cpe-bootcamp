@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/_handler.mjs"
+      "destination": "/api/handler.mjs"
     },
     {
       "source": "/(.*)",
